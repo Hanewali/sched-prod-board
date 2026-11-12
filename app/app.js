@@ -9,7 +9,6 @@ const status = document.querySelector('[data-testid="status"]');
 
 const acked = new Set();
 const pending = new Set();
-let shownIds = '';
 
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -28,28 +27,34 @@ const localTime = (iso) => {
   return Number.isNaN(d.getTime()) ? iso : timeFmt.format(d);
 };
 
-function rowHtml(i) {
-  const done = acked.has(i.id);
-  return `<li data-testid="incident-row" data-id="${esc(i.id)}" class="row ${esc(i.severity)}">
+function rowEl(i) {
+  const li = document.createElement('li');
+  li.dataset.testid = 'incident-row';
+  li.dataset.id = i.id;
+  li.className = `row ${i.severity}`;
+  li.innerHTML = `
         <span class="id">${esc(i.id)}</span>
         <span class="sev">${esc(i.severity)}</span>
         <span class="what">${esc(i.service)} · ${esc(i.region)} · ${esc(i.summary)}</span>
         <time datetime="${esc(i.openedAt)}">${esc(localTime(i.openedAt))}</time>
         ${
-          done
+          acked.has(i.id)
             ? '<span data-testid="acked" class="acked">acked</span>'
             : '<button type="button" data-testid="ack" class="ack">Ack</button>'
-        }
-      </li>`;
+        }`;
+  return li;
 }
 
+// Rows already on screen are never rebuilt: a new incident is inserted at the top and the rest stay put,
+// so a row under the pointer, a focused button or an open confirm is not torn down by a refresh.
 function render(incidents) {
-  // Rebuild only when the set of incidents changes, so a click is never lost to a refresh.
-  const ids = incidents.map((i) => i.id).join(',');
-  if (ids !== shownIds) {
-    shownIds = ids;
-    list.innerHTML = incidents.map(rowHtml).join('');
-  }
+  const have = new Map([...list.children].map((li) => [li.dataset.id, li]));
+  const want = new Set(incidents.map((i) => i.id));
+  for (const [id, li] of have) if (!want.has(id)) li.remove();
+  incidents.forEach((i, at) => {
+    const li = have.get(i.id) ?? rowEl(i);
+    if (list.children[at] !== li) list.insertBefore(li, list.children[at] ?? null);
+  });
   empty.hidden = incidents.length > 0;
 }
 
