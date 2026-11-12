@@ -14,3 +14,5 @@ footer { color: #777; font-size: 13px; }
 .status { color: #b00020; min-height: 1.4em; margin: 0 0 6px; }
 .row button.ack { min-height: 32px; padding: 0 14px; font: inherit; cursor: pointer; }
 .row .acked { color: #1a7f37; font-weight: 600; }
+.confirm { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; padding: 12px 18px; background: #fff; border: 2px solid #1d1d1f; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.2); font-weight: 600; }
+.confirm button { min-height: 32px; padding: 0 14px; font: inherit; cursor: pointer; }

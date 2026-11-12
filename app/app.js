@@ -53,25 +53,57 @@ function render(incidents) {
   empty.hidden = incidents.length > 0;
 }
 
-list.addEventListener('click', async (e) => {
+// Ack asks first: the confirm is fixed on screen (it never moves with the list) and names the incident id.
+const confirmBox = document.querySelector('[data-testid="confirm"]');
+const confirmText = confirmBox.querySelector('.confirm-text');
+const confirmAck = confirmBox.querySelector('[data-testid="confirm-ack"]');
+const confirmCancel = confirmBox.querySelector('[data-testid="confirm-cancel"]');
+let asking = null;
+
+function ask(id) {
+  asking = id;
+  confirmText.textContent = `Ack ${id}?`;
+  confirmBox.dataset.id = id;
+  confirmBox.hidden = false;
+  confirmAck.focus();
+}
+
+function closeConfirm() {
+  asking = null;
+  confirmBox.hidden = true;
+  delete confirmBox.dataset.id;
+}
+
+list.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-testid="ack"]');
   if (!btn) return;
-  const id = btn.closest('[data-testid="incident-row"]').dataset.id;
-  if (pending.has(id)) return;
+  ask(btn.closest('[data-testid="incident-row"]').dataset.id);
+});
+
+confirmCancel.addEventListener('click', closeConfirm);
+document.addEventListener('keydown', (e) => e.key === 'Escape' && asking && closeConfirm());
+
+confirmAck.addEventListener('click', async () => {
+  const id = asking;
+  if (!id || pending.has(id)) return;
   pending.add(id);
-  btn.disabled = true;
+  confirmAck.disabled = true;
   try {
     await ack(id);
     acked.add(id);
-    const row = btn.closest('[data-testid="incident-row"]');
-    btn.replaceWith(Object.assign(document.createElement('span'), { className: 'acked', textContent: 'acked' }));
-    row.querySelector('.acked').dataset.testid = 'acked';
+    const row = list.querySelector(`[data-id="${CSS.escape(id)}"]`);
+    row?.querySelector('[data-testid="ack"]')?.replaceWith(
+      Object.assign(document.createElement('span'), { className: 'acked', textContent: 'acked' }),
+    );
+    const mark = row?.querySelector('.acked');
+    if (mark) mark.dataset.testid = 'acked';
     status.textContent = '';
+    closeConfirm();
   } catch (err) {
-    btn.disabled = false;
     status.textContent = `Ack failed for ${id}: ${err.message}`;
   } finally {
     pending.delete(id);
+    confirmAck.disabled = false;
   }
 });
 
